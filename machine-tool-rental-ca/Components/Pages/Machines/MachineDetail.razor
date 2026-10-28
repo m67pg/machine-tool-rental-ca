@@ -1,0 +1,182 @@
+@page "/machines/{Id:int}"
+@inject IDbContextFactory<AppDbContext> DbFactory
+
+<PageTitle>@(machine is null ? "レンタル機械" : $"{machine.Category} {machine.Name} | 東和機工レンタル")</PageTitle>
+
+@if (!loaded)
+{
+    <section class="section"><div class="wrap"><p>読み込み中…</p></div></section>
+}
+else if (machine is null)
+{
+    <section class="section">
+        <div class="wrap">
+            <div class="section-head"><h2>機械が見つかりません</h2></div>
+            <a class="btn btn-ghost" href="/#machines">機械一覧に戻る</a>
+        </div>
+    </section>
+}
+else
+{
+    <div class="wrap">
+        <nav class="breadcrumb" aria-label="パンくず">
+            <a href="/">トップ</a>
+            <span><a href="/#machines">機械一覧</a></span>
+            <span><a href="@($"/?category={Uri.EscapeDataString(machine.Category)}#machines")">@machine.Category</a></span>
+            <span aria-current="page">@machine.Name</span>
+        </nav>
+    </div>
+
+    <section class="detail">
+        <div class="wrap detail-inner">
+            <div class="detail-gallery">
+                <div class="detail-photo">
+                    <span class="status @machine.Status.CssClass()">@machine.Status.Label()</span>
+                    @if (!string.IsNullOrWhiteSpace(machine.ImageUrl))
+                    {
+                        <img src="@machine.ImageUrl" alt="@machine.Name" />
+                    }
+                    else
+                    {
+                        <span class="ph">メイン写真</span>
+                    }
+                </div>
+            </div>
+
+            <div class="detail-summary">
+                <p class="machine-cat">@machine.Category</p>
+                <h1>@machine.Name</h1>
+                <p class="machine-maker">@machine.MakerLine()</p>
+
+                <div class="detail-price">
+                    <p class="price price-lg"><small>月額</small>@($"¥{machine.MonthlyPrice:N0}")<small>〜</small></p>
+                    <p class="note">税別。貸出期間・搬入先により変動します。</p>
+                </div>
+
+                <dl class="spec spec-sm">
+                    @if (!string.IsNullOrWhiteSpace(machine.MinRentalPeriod))
+                    {
+                        <div><dt>貸出期間</dt><dd>@machine.MinRentalPeriod</dd></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(machine.InstallArea))
+                    {
+                        <div><dt>設置場所</dt><dd>@machine.InstallArea</dd></div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(machine.NextAvailable))
+                    {
+                        <div><dt>次回空き</dt><dd>@machine.NextAvailable</dd></div>
+                    }
+                </dl>
+
+                <div class="detail-actions">
+                    <a class="btn btn-primary" href="/#contact">この機械の見積もりを依頼</a>
+                    <a class="btn btn-ghost" href="tel:0312345678">電話で相談</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="section section-tint">
+        <div class="wrap detail-body">
+            <div>
+                @if (machine.Features.ToLines().Length > 0)
+                {
+                    <h2 class="h-sub">機械の特徴</h2>
+                    @foreach (var line in machine.Features.ToLines())
+                    {
+                        <p>@line</p>
+                    }
+                }
+
+                @if (machine.Accessories.ToLines().Length > 0)
+                {
+                    <h2 class="h-sub">付属品</h2>
+                    <ul class="plain-list">
+                        @foreach (var line in machine.Accessories.ToLines())
+                        {
+                            <li>@line</li>
+                        }
+                    </ul>
+                }
+            </div>
+
+            <div>
+                @if (machine.Specs.Count > 0)
+                {
+                    <h2 class="h-sub">仕様</h2>
+                    <table class="spec-table">
+                        <tbody>
+                            @foreach (var s in machine.Specs.OrderBy(x => x.SortOrder))
+                            {
+                                <tr><th>@s.Name</th><td>@s.Value</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </section>
+
+    <section class="section">
+        <div class="wrap">
+            @if (related.Count > 0)
+            {
+                <div class="section-head"><h2>同じカテゴリの機械</h2></div>
+                <div class="machine-grid">
+                    @foreach (var r in related)
+                    {
+                        <article class="machine">
+                          <a class="machine-link" href="/machines/@r.Id">
+                            <div class="machine-photo">
+                              <span class="status @r.Status.CssClass()">@r.Status.Label()</span>
+                              @if (!string.IsNullOrWhiteSpace(r.ImageUrl))
+                              {
+                                <img src="@r.ImageUrl" alt="@r.Name" />
+                              }
+                              else
+                              {
+                                <span class="ph">機械写真</span>
+                              }
+                            </div>
+                            <div class="machine-body">
+                              <p class="machine-cat">@r.Category</p>
+                              <h3>@r.Name</h3>
+                              <p class="machine-maker">@r.MakerLine()</p>
+                              <p class="price"><small>月額</small>@($"¥{r.MonthlyPrice:N0}")<small>〜</small></p>
+                            </div>
+                          </a>
+                        </article>
+                    }
+                </div>
+            }
+            <p class="back"><a class="btn btn-ghost" href="/#machines">機械一覧に戻る</a></p>
+        </div>
+    </section>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private RentalMachine? machine;
+    private List<RentalMachine> related = [];
+    private bool loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+
+        machine = await db.RentalMachines.AsNoTracking()
+            .Include(m => m.Specs)
+            .FirstOrDefaultAsync(m => m.Id == Id);
+
+        related = machine is null
+            ? []
+            : await db.RentalMachines.AsNoTracking()
+                .Where(m => m.Category == machine.Category && m.Id != machine.Id)
+                .OrderBy(m => m.Id)
+                .Take(3)
+                .ToListAsync();
+
+        loaded = true;
+    }
+}

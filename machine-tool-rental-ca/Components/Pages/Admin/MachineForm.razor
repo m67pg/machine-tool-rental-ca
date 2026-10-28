@@ -1,0 +1,105 @@
+<EditForm Model="Model" OnValidSubmit="HandleValidSubmit" class="form">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="field-row">
+        <label for="name">機械名 <span class="required">必須</span></label>
+        <InputText id="name" @bind-Value="Model.Name" />
+        <ValidationMessage For="() => Model.Name" />
+    </div>
+
+    <div class="field-row">
+        <label for="category">カテゴリ <span class="required">必須</span></label>
+        <InputText id="category" @bind-Value="Model.Category" />
+        <ValidationMessage For="() => Model.Category" />
+    </div>
+
+    <div class="field-grid">
+        <div class="field-row">
+            <label for="manufacturer">メーカー</label>
+            <InputText id="manufacturer" @bind-Value="Model.Manufacturer" />
+        </div>
+        <div class="field-row">
+            <label for="year">製造年（西暦）</label>
+            <InputNumber id="year" @bind-Value="Model.ManufactureYear" />
+            <ValidationMessage For="() => Model.ManufactureYear" />
+        </div>
+    </div>
+
+    <div class="field-grid">
+        <div class="field-row">
+            <label for="status">空き状況</label>
+            <InputSelect id="status" @bind-Value="Model.Status">
+                <option value="@MachineStatus.Available">空きあり</option>
+                <option value="@MachineStatus.Reserved">予約中</option>
+            </InputSelect>
+        </div>
+        <div class="field-row">
+            <label for="price">月額（円・税別）</label>
+            <InputNumber id="price" @bind-Value="Model.MonthlyPrice" />
+            <ValidationMessage For="() => Model.MonthlyPrice" />
+        </div>
+    </div>
+
+    <div class="field-grid three">
+        <div class="field-row">
+            <label for="period">貸出期間</label>
+            <InputText id="period" @bind-Value="Model.MinRentalPeriod" placeholder="例: 1か月〜" />
+        </div>
+        <div class="field-row">
+            <label for="area">設置場所</label>
+            <InputText id="area" @bind-Value="Model.InstallArea" placeholder="例: 関東一円に搬入可" />
+        </div>
+        <div class="field-row">
+            <label for="next">次回空き</label>
+            <InputText id="next" @bind-Value="Model.NextAvailable" placeholder="例: 即日〜" />
+        </div>
+    </div>
+
+    <div class="field-row">
+        <label for="image">画像URL</label>
+        <InputText id="image" @bind-Value="Model.ImageUrl" />
+    </div>
+
+    <div class="field-row">
+        <label for="features">機械の特徴（改行ごとに段落になります）</label>
+        <InputTextArea id="features" rows="5" @bind-Value="Model.Features" />
+        <ValidationMessage For="() => Model.Features" />
+    </div>
+
+    <div class="field-row">
+        <label for="accessories">付属品（1行1項目）</label>
+        <InputTextArea id="accessories" rows="4" @bind-Value="Model.Accessories" />
+        <ValidationMessage For="() => Model.Accessories" />
+    </div>
+
+    <fieldset class="spec-editor">
+        <legend>仕様（上から3行が一覧カードに表示されます）</legend>
+        @foreach (var spec in Model.Specs)
+        {
+            <div class="spec-row">
+                <input type="text" placeholder="項目（例: X軸ストローク）" maxlength="100" @bind="spec.Name" @bind:event="oninput" />
+                <input type="text" placeholder="値（例: 510 mm）" maxlength="200" @bind="spec.Value" @bind:event="oninput" />
+                <button type="button" class="btn btn-small" @onclick="() => RemoveSpec(spec)">削除</button>
+            </div>
+        }
+        <button type="button" class="btn btn-ghost btn-small" @onclick="AddSpec">仕様の行を追加</button>
+    </fieldset>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">@SubmitLabel</button>
+        <a class="btn btn-ghost" href="/admin/machines">キャンセル</a>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired] public RentalMachine Model { get; set; } = default!;
+    [Parameter] public string SubmitLabel { get; set; } = "保存";
+    [Parameter] public EventCallback OnSave { get; set; }
+
+    private Task HandleValidSubmit() => OnSave.InvokeAsync();
+
+    private void AddSpec() => Model.Specs.Add(new MachineSpec());
+
+    private void RemoveSpec(MachineSpec spec) => Model.Specs.Remove(spec);
+}

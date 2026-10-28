@@ -1,0 +1,20 @@
+<Router AppAssembly="typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+            <NotAuthorized>
+                <RedirectToLogin />
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="typeof(Layout.MainLayout)">
+            <section class="section">
+                <div class="wrap">
+                    <div class="section-head"><h2>ページが見つかりません</h2></div>
+                    <a class="btn btn-ghost" href="/">トップへ戻る</a>
+                </div>
+            </section>
+        </LayoutView>
+    </NotFound>
+</Router>

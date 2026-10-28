@@ -1,0 +1,78 @@
+@page "/admin/machines/{Id:int}/edit"
+@attribute [Authorize]
+@layout AdminLayout
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>機械の編集</PageTitle>
+
+<h1 class="admin-title">機械の編集</h1>
+
+@if (!loaded)
+{
+    <p>読み込み中…</p>
+}
+else if (model is null)
+{
+    <p>機械が見つかりません。</p>
+    <a class="btn btn-ghost" href="/admin/machines">一覧へ戻る</a>
+}
+else
+{
+    <MachineForm Model="model" SubmitLabel="更新する" OnSave="SaveAsync" />
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private RentalMachine? model;
+    private bool loaded;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        model = await db.RentalMachines.AsNoTracking()
+            .Include(m => m.Specs)
+            .FirstOrDefaultAsync(m => m.Id == Id);
+
+        model?.Specs.Sort((a, b) => a.SortOrder.CompareTo(b.SortOrder));
+        loaded = true;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (model is null) return;
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        await using var tx = await db.Database.BeginTransactionAsync();
+
+        var entity = await db.RentalMachines.FirstOrDefaultAsync(m => m.Id == Id);
+        if (entity is null)
+        {
+            Nav.NavigateTo("/admin/machines");
+            return;
+        }
+
+        // 画面で編集した値をエンティティへ反映（仕様は別処理）
+        db.Entry(entity).CurrentValues.SetValues(model);
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        // 仕様は「全部消して入れ直す」
+        await db.MachineSpecs.Where(s => s.RentalMachineId == Id).ExecuteDeleteAsync();
+        db.MachineSpecs.AddRange(
+            model.Specs
+                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                .Select((s, i) => new MachineSpec
+                {
+                    RentalMachineId = Id,
+                    Name = s.Name.Trim(),
+                    Value = (s.Value ?? "").Trim(),
+                    SortOrder = i
+                }));
+
+        await db.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        Nav.NavigateTo("/admin/machines");
+    }
+}

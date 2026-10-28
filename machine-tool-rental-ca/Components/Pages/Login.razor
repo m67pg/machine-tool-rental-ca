@@ -1,0 +1,38 @@
+@page "/login"
+@attribute [ExcludeFromInteractiveRouting]
+
+<PageTitle>管理画面ログイン | 東和機工レンタル</PageTitle>
+
+<section class="section">
+    <div class="wrap narrow">
+        <div class="section-head"><h2>管理画面ログイン</h2></div>
+
+        @if (Error == "1")
+        {
+            <p class="form-error">IDまたはパスワードが正しくありません。</p>
+        }
+
+        <form method="post" action="/auth/login" class="form">
+            <AntiforgeryToken />
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+
+            <div class="field-row">
+                <label for="UserName">ID</label>
+                <input id="UserName" name="UserName" autocomplete="username" required />
+            </div>
+            <div class="field-row">
+                <label for="Password">パスワード</label>
+                <input id="Password" name="Password" type="password" autocomplete="current-password" required />
+            </div>
+
+            <button type="submit" class="btn btn-primary">ログイン</button>
+        </form>
+
+        <p class="note login-hint">デモ用アカウント: ID <code>admin</code> / パスワード <code>demo-password</code></p>
+    </div>
+</section>
+
+@code {
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+}

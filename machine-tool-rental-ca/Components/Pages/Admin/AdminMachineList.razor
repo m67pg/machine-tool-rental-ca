@@ -1,0 +1,80 @@
+@page "/admin/machines"
+@attribute [Authorize]
+@layout AdminLayout
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject IJSRuntime JS
+
+<PageTitle>レンタル機械管理</PageTitle>
+
+<div class="toolbar">
+    <h1 class="admin-title">レンタル機械一覧</h1>
+    <a class="btn btn-primary" href="/admin/machines/create">新規登録</a>
+</div>
+
+@if (machines is null)
+{
+    <p>読み込み中…</p>
+}
+else if (machines.Count == 0)
+{
+    <p>登録されている機械はありません。</p>
+}
+else
+{
+    <div class="table-scroll">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>機械名</th>
+                    <th>カテゴリ</th>
+                    <th>メーカー</th>
+                    <th>空き状況</th>
+                    <th class="num">月額</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var m in machines)
+                {
+                    <tr>
+                        <td>@m.Id</td>
+                        <td><a href="/machines/@m.Id">@m.Name</a></td>
+                        <td>@m.Category</td>
+                        <td>@m.Manufacturer</td>
+                        <td><span class="badge @m.Status.CssClass()">@m.Status.Label()</span></td>
+                        <td class="num">@($"¥{m.MonthlyPrice:N0}")</td>
+                        <td class="actions">
+                            <a class="btn btn-ghost btn-small" href="/admin/machines/@m.Id/edit">編集</a>
+                            <button type="button" class="btn btn-danger btn-small" @onclick="() => DeleteAsync(m)">削除</button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private List<RentalMachine>? machines;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        await using var db = await DbFactory.CreateDbContextAsync();
+        machines = await db.RentalMachines.AsNoTracking().OrderBy(m => m.Id).ToListAsync();
+    }
+
+    private async Task DeleteAsync(RentalMachine m)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", $"「{m.Name}」を削除しますか？"))
+        {
+            return;
+        }
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        await db.RentalMachines.Where(x => x.Id == m.Id).ExecuteDeleteAsync(); // 仕様行はFKのカスケードで一緒に消える
+        await LoadAsync();
+    }
+}

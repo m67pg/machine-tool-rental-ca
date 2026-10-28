@@ -1,0 +1,35 @@
+@page "/admin/machines/create"
+@attribute [Authorize]
+@layout AdminLayout
+@inject IDbContextFactory<AppDbContext> DbFactory
+@inject NavigationManager Nav
+
+<PageTitle>機械の新規登録</PageTitle>
+
+<h1 class="admin-title">機械の新規登録</h1>
+
+<MachineForm Model="model" SubmitLabel="登録する" OnSave="SaveAsync" />
+
+@code {
+    // 仕様の入力欄は最初から3行用意しておく
+    private readonly RentalMachine model = new() { Specs = [new(), new(), new()] };
+
+    private async Task SaveAsync()
+    {
+        var now = DateTime.UtcNow;
+        model.CreatedAt = model.UpdatedAt = now;
+        model.Specs = CleanSpecs(model.Specs);
+
+        await using var db = await DbFactory.CreateDbContextAsync();
+        db.RentalMachines.Add(model);
+        await db.SaveChangesAsync();
+
+        Nav.NavigateTo("/admin/machines");
+    }
+
+    // 空の行を捨てて、表示順を振り直す
+    private static List<MachineSpec> CleanSpecs(IEnumerable<MachineSpec> specs) =>
+        specs.Where(s => !string.IsNullOrWhiteSpace(s.Name))
+             .Select((s, i) => new MachineSpec { Name = s.Name.Trim(), Value = (s.Value ?? "").Trim(), SortOrder = i })
+             .ToList();
+}
