@@ -8,10 +8,10 @@ on:
 permissions:
   id-token: write      # Azure OIDCログインに必要
   contents: read
+  packages: write      # ghcr.io へのイメージ登録に必要
 
 env:
-  ACR_NAME: acrmachinetoolrental001
-  IMAGE_NAME: machine-tool-rental-ca
+  IMAGE_NAME: ghcr.io/m67pg/machine-tool-rental-ca   # ghcr.io のイメージ名は小文字のみ
   RESOURCE_GROUP: rg-machine-tool-rental
   CONTAINER_APP: machine-tool-rental-ca
 
@@ -29,10 +29,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
-      - name: Build and push image to ACR
+      - name: Log in to GitHub Container Registry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Build and push image to ghcr.io
         run: |
-          az acr login --name "$ACR_NAME"
-          IMAGE="$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}"
+          IMAGE="$IMAGE_NAME:${{ github.sha }}"
           docker build -t "$IMAGE" .
           docker push "$IMAGE"
 
@@ -42,4 +46,4 @@ jobs:
           az containerapp update \
             --name "$CONTAINER_APP" \
             --resource-group "$RESOURCE_GROUP" \
-            --image "$ACR_NAME.azurecr.io/$IMAGE_NAME:${{ github.sha }}"
+            --image "$IMAGE_NAME:${{ github.sha }}"

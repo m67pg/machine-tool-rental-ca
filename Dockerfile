@@ -19,6 +19,9 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
+# ghcr.io のパッケージをこのリポジトリに紐づける（GitHub Actionsから継続して登録できるようにする）
+LABEL org.opencontainers.image.source="https://github.com/m67pg/machine-tool-rental-ca"
+
 ENV ASPNETCORE_ENVIRONMENT=Production
 # Container Appsのイングレス（HTTPS終端）の背後で、元のHTTPS/クライアント情報を正しく扱う
 ENV ASPNETCORE_FORWARDEDHEADERS_ENABLED=true
